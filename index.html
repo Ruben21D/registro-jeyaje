@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comunidad Jeyajé Arco Iris</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f1ea; color: #3e362e; padding: 20px; display: flex; flex-direction: column; align-items: center; margin: 0; }
+        header { text-align: center; background: #ba3c3c; color: white; padding: 15px; border-radius: 12px; width: 100%; max-width: 480px; box-sizing: border-box; }
+        h1 { margin: 0; font-size: 20px; }
+        header p { margin: 4px 0 0 0; font-size: 12px; opacity: 0.9; }
+        section { background: white; padding: 20px; border-radius: 12px; width: 100%; max-width: 480px; margin-top: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); box-sizing: border-box; }
+        h2 { color: #ba3c3c; font-size: 15px; border-bottom: 2px solid #e6dfd3; padding-bottom: 6px; margin-top: 0; }
+        .campo { margin-bottom: 15px; }
+        label { font-weight: bold; display: block; font-size: 13px; margin-bottom: 4px; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #c9c0b3; border-radius: 6px; box-sizing: border-box; background: #faf9f6; font-size: 14px; }
+        .btn { width: 100%; background: #8c6239; color: white; padding: 12px; border: none; border-radius: 6px; font-weight: bold; font-size: 14px; cursor: pointer; margin-top: 5px; }
+        .btn:hover { background: #734f2d; }
+        #admin { display: none; width: 100%; max-width: 480px; }
+        #cnt { background: #e6dfd3; padding: 10px; border-radius: 6px; text-align: center; font-weight: bold; margin-bottom: 15px; font-size: 14px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; margin-bottom: 15px; }
+        th { background: #ba3c3c; color: white; padding: 8px; text-align: left; }
+        td { padding: 8px; border-bottom: 1px solid #e6dfd3; }
+        .b-wa { background: #25d366; color: white; padding: 4px 6px; border: none; border-radius: 4px; cursor: pointer; }
+        .b-del { background: #ba3c3c; color: white; padding: 4px 6px; border: none; border-radius: 4px; cursor: pointer; margin-left: 4px; }
+        .item-e { display: flex; justify-content: space-between; align-items: center; background: #faf9f6; padding: 6px; margin-top: 5px; border: 1px solid #e6dfd3; border-radius: 4px; font-size: 13px; }
+        .btn-secreto { background: none; border: none; color: #a3998e; font-size: 12px; margin-top: 40px; margin-bottom: 20px; cursor: pointer; text-decoration: underline; }
+        
+        /* Estilo para los títulos de cada sección del listado discriminado */
+        .titulo-seccion-evento { font-weight: bold; color: #ba3c3c; font-size: 13px; margin-top: 15px; margin-bottom: 5px; background: #faf9f6; padding: 6px; border-left: 4px solid #ba3c3c; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Comunidad Holística Jeyajé Arco Iris</h1>
+        <p>Formulario Oficial de Inscripción</p>
+    </header>
+
+    <main style="width:100%; max-width:480px; display:flex; flex-direction:column; align-items:center;">
+        
+        <!-- VISTA DE INSCRIPCIÓN (PÚBLICA) -->
+        <section id="vista-form">
+            <h2>Inscripción a la Ceremonia</h2>
+            <form id="form-reg">
+                <div class="campo"><label>Nombre Completo:</label><input type="text" id="n" required></div>
+                <div class="campo"><label>Número de WhatsApp (poner el prefijo 591 seguido del nro.):</label><input type="tel" id="w" placeholder="Ej. 59170000000" required></div>
+                <div class="campo"><label>Invitado por:</label><input type="text" id="i" required></div>
+                <div class="campo"><label>Cantidad de asistentes:</label><input type="number" id="c" min="1" value="1" required></div>
+                <div class="campo"><label>Selecciona tu Ceremonia:</label><select id="e" required></select></div>
+                <button type="submit" class="btn">Confirmar Mi Asistencia ✨</button>
+            </form>
+        </section>
+
+        <!-- PANEL DE ADMINISTRACIÓN (OCULTO) -->
+        <div id="admin">
+            <section>
+                <h2>⚙️ Configuración de Ceremonias</h2>
+                <div class="campo"><label>Agregar nuevo evento:</label><input type="text" id="new-e" placeholder="Ej. Ceremonia Octubre"></div>
+                <button type="button" class="btn" onclick="addE()">✨ Guardar Evento Nuevo</button>
+                <div id="list-e" style="margin-top:15px;"></div>
+            </section>
+
+            <section>
+                <h2>📊 Panel de Control (Asistentes)</h2>
+                <div id="cnt">Total Participantes Confirmados: <span id="tot">0</span></div>
+                <button type="button" class="btn" style="background:#ba3c3c; margin-bottom:15px;" onclick="copiarListaCompleta()">📋 Copiar Reporte para WhatsApp</button>   
+                
+                <!-- El contenedor donde se inyectarán las tablas separadas de forma dinámica -->
+                <div id="listas-separadas-eventos"></div>
+            </section>
+        </div>
+
+        <button class="btn-secreto" onclick="login()">Acceso Encargado</button>
+    </main>
+    <script>
+        const form = document.getElementById('form-reg');
+        const total = document.getElementById('tot');
+        const sel = document.getElementById('e');
+        const listV = document.getElementById('list-e');
+        const panel = document.getElementById('admin');
+        const contenedorListas = document.getElementById('listas-separadas-eventos');
+
+        let pData = JSON.parse(localStorage.getItem('pData')) || [];
+        let eData = JSON.parse(localStorage.getItem('eData')) || ["Ceremonia de Agradecimiento a la Pachamama - 21-Agosto-2026", "Ceremonia de Equinoccio de Primavera - 21-Septiembre-2026"];
+
+        renderE();
+        renderT();
+
+        function login() {
+            let pass = prompt("Ingresa la contraseña de administrador:");
+            if (pass === "2009") {
+                panel.style.display = "block";
+                alert("Acceso concedido. Panel habilitado abajo.");
+            } else {
+                alert("Clave incorrecta.");
+            }
+        }
+
+        function addE() {
+            const inp = document.getElementById('new-e');
+            let v = inp.value.trim();
+            if(v === "") return;
+            eData.push(v);
+            localStorage.setItem('eData', JSON.stringify(eData));
+            inp.value = "";
+            renderE();
+            renderT();
+        }
+
+        function delE(idx) {
+            if(confirm("¿Eliminar ésta ceremonia del menú?")) {
+                eData.splice(idx, 1);
+                localStorage.setItem('eData', JSON.stringify(eData));
+                renderE();
+                renderT();
+            }
+        }
+
+        function renderE() {
+            sel.innerHTML = '<option value="">-- Selecciona una Ceremonia --</option>';
+            eData.forEach(x => {
+                let o = document.createElement('option');
+                o.value = x; o.textContent = x; sel.appendChild(o);
+            });
+            listV.innerHTML = '';
+            eData.forEach((x, i) => {
+                let d = document.createElement('div'); d.className = 'item-e';
+                d.innerHTML = '<span>'+x+'</span><button style="width:auto;margin:0;padding:2px 6px;background:#ba3c3c;color:white;border:none;border-radius:4px;cursor:pointer;" onclick="delE('+i+')">✖</button>';
+                listV.appendChild(d);
+            });
+        }
+
+        form.addEventListener('submit', function(ev) {
+            ev.preventDefault();
+            pData.push({
+                n: document.getElementById('n').value,
+                w: document.getElementById('w').value,
+                i: document.getElementById('i').value,
+                c: parseInt(document.getElementById('c').value),
+                e: sel.value
+            });
+            localStorage.setItem('pData', JSON.stringify(pData));
+            renderT();
+            form.reset();
+            alert("¡Registro procesado con éxito! ✨");
+        });
+
+        function renderT() {
+            contenedorListas.innerHTML = '';
+            let sumGlobal = 0;
+
+            if (pData.length === 0) {
+                contenedorListas.innerHTML = '<p style="text-align:center; font-size:12px; color:#a3998e;">No hay asistentes registrados aún.</p>';
+                total.textContent = '0';
+                return;
+            }
+
+            // Agrupar la información dinámicamente según la ceremonia elegida
+            let agrupado = {};
+            eData.forEach(evt => { agrupado[evt] = []; });
+            
+            pData.forEach((asistente, idxOrig) => {
+                let evt = asistente.e || "Sin Ceremonia Especificada";
+                if (!agrupado[evt]) {
+                    agrupado[evt] = [];
+                }
+                agrupado[evt].push({ ...asistente, idx: idxOrig });
+            });
+
+            // Dibujar las secciones independientes con sus respectivas tablas
+            for (let nombreEvento in agrupado) {
+                let asistentesEvento = agrupado[nombreEvento];
+                if (asistentesEvento.length === 0) continue;
+
+                let subTotalEvento = asistentesEvento.reduce((acc, curr) => acc + curr.c, 0);
+                sumGlobal += subTotalEvento;
+
+                // Título de la Ceremonia
+                let tituloEvento = document.createElement('div');
+                tituloEvento.className = 'titulo-seccion-evento';
+                tituloEvento.textContent = nombreEvento + " (" + subTotalEvento + " almas)";
+                contenedorListas.appendChild(tituloEvento);
+
+                // Construcción limpia de la tabla usando código seguro
+                let tabla = document.createElement('table');
+                tabla.innerHTML = '<thead><tr><th>Nombre</th><th>Invitado</th><th>Cant.</th><th>Acciones</th></tr></thead><tbody></tbody>';
+                let tbody = tabla.querySelector('tbody');
+
+                asistentesEvento.forEach(x => {
+                    let r = document.createElement('tr');
+                    r.innerHTML = '<td>'+x.n+'</td><td>'+x.i+'</td><td>'+x.c+'</td><td><button class="b-wa" onclick="send('+x.idx+')">📱</button><button class="b-del" onclick="delP('+x.idx+')">🗑️</button></td>';
+                    tbody.appendChild(r);
+                });
+
+                contenedorListas.appendChild(tabla);
+            }
+
+            total.textContent = sumGlobal;
+        }
+
+        function send(idx) {
+            let p = pData[idx];
+            let txt = encodeURIComponent("¡Hola " + p.n + "! Confirmamos tu registro para la " + p.e + " (" + p.c + " lugar/es). ¡Te esperamos!");
+            window.open("https://wa.me" + p.w + "?text=" + txt, "_blank");
+        }
+
+        function delP(idx) {
+            if(confirm("¿Seguro que deseas eliminar este asistente?")) {
+                pData.splice(idx, 1);
+                localStorage.setItem('pData', JSON.stringify(pData));
+                renderT();
+            }
+        }
+
+        function copiarListaCompleta() {
+            if(pData.length === 0) {
+                alert("No hay asistentes registrados.");
+                return;
+            }
+
+            let agrupado = {};
+            pData.forEach(x => {
+                let evt = x.e || "Otros";
+                if(!agrupado[evt]) {
+                    agrupado[evt] = [];
+                }
+                agrupado[evt].push(x);
+            });
+
+            let txt = "*REPORTE DE ASISTENTES - TRIBU JEYAJÉ*\n";
+            txt += "=========================================\n\n";
+
+            for (let evento in agrupado) {
+                let lista = agrupado[evento];
+                let subTotal = lista.reduce((acc, curr) => acc + curr.c, 0);
+                
+                txt += "🔥 *" + evento.toUpperCase() + "* (" + subTotal + " asistentes):\n";
+                lista.forEach((x, i) => {
+                    txt += "  " + (i+1) + ". " + x.n + " (Invitado por: " + x.i + ") - " + x.c + " asist.\n";
+                });
+                txt += "\n";
+            }
+
+            navigator.clipboard.writeText(txt).then(() => {
+                alert("¡Reporte segmentado copiado! Ya puedes pegarlo de forma limpia en WhatsApp.");
+            });
+        }
+    </script>
+</body>
+</html>
