@@ -72,224 +72,246 @@
     </main>
 
     <script>
-// CONFIGURACIÓN CENTRAL: Coloca aquí tu URL privada de Google Apps Script
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwaXgClfcJGtLBv9WKyp3AU17zbxB8wGjM-R4HNG3n1kNRhVYUfWDUQAj-NlsRI7UilWA/exec";
+        // CONFIGURACIÓN CENTRAL: Coloca aquí tu URL privada de Google Apps Script
+        const WEB_APP_URL = "TU_URL_DE_GOOGLE_APPS_SCRIPT_AQUÍ";
 
-const form = document.getElementById('form-reg');
-const total = document.getElementById('tot');
-const sel = document.getElementById('e');
-const listV = document.getElementById('list-e');
-const panel = document.getElementById('admin');
-const contenedorListas = document.getElementById('listas-separadas-eventos');
+        const form = document.getElementById('form-reg');
+        const total = document.getElementById('tot');
+        const sel = document.getElementById('e');
+        const listV = document.getElementById('list-e');
+        const panel = document.getElementById('admin');
+        const contenedorListas = document.getElementById('listas-separadas-eventos');
 
-let pData = [];
-let eData = JSON.parse(localStorage.getItem('eData')) || [
-    "Ceremonia de Agradecimiento a la Pachamama - 21-Agosto-2026", 
-    "Ceremonia de Equinoccio de Primavera - 21-Septiembre-2026"
-];
+        let pData = [];
+        let eData = JSON.parse(localStorage.getItem('eData')) || [
+            "Ceremonia de Agradecimiento a la Pachamama - 21-Agosto-2026", 
+            "Ceremonia de Equinoccio de Primavera - 21-Septiembre-2026"
+        ];
 
-// Dibuja los eventos en el menú desplegable al abrir la página
-renderE();
-
-// Función para descargar los datos actualizados desde la Hoja de Google
-function cargarDatosDesdeGoogle() {
-    if (panel.style.display !== "block") return;
-
-    contenedorListas.innerHTML = '<p style="text-align:center; font-size:12px; color:#8c6239; font-weight:bold;">Sincronizando con Google Sheets... 🔄</p>';
-
-    fetch(WEB_APP_URL)
-        .then(response => response.json())
-        .then(data => {
-            if (Array.isArray(data)) {
-                pData = data;
-                renderT();
-            } else {
-                alert("Error al formatear la información desde la base de datos.");
-            }
-        })
-        .catch(error => {
-            console.error("Error:", error);
-            contenedorListas.innerHTML = '<p style="text-align:center; font-size:12px; color:#ba3c3c;">Error de conexión. Inténtalo de nuevo.</p>';
-        });
-}
-
-function login() {
-    let pass = prompt("Ingresa la contraseña de administrador:");
-    if (pass === "2009") {
-        panel.style.display = "block";
-        alert("Acceso concedido. Panel habilitado abajo.");
-        cargarDatosDesdeGoogle();
-    } else {
-        alert("Clave incorrecta.");
-    }
-}
-
-function addE() {
-    const inp = document.getElementById('new-e');
-    let v = inp.value.trim();
-    if(v === "") return;
-    eData.push(v);
-    localStorage.setItem('eData', JSON.stringify(eData));
-    inp.value = "";
-    renderE();
-    renderT();
-}
-
-function delE(idx) {
-    if(confirm("¿Eliminar esta ceremonia del menú?")) {
-        eData.splice(idx, 1);
-        localStorage.setItem('eData', JSON.stringify(eData));
+        // Dibuja los eventos en el menú desplegable al abrir la página
         renderE();
-        renderT();
-    }
-}
+        // Función para descargar los datos actualizados desde la Hoja de Google
+        function cargarDatosDesdeGoogle() {
+            if (panel.style.display !== "block") return;
 
-function renderE() {
-    sel.innerHTML = '<option value="">-- Selecciona una Ceremonia --</option>';
-    eData.forEach(x => {
-        let o = document.createElement('option');
-        o.value = x; 
-        o.textContent = x; 
-        sel.appendChild(o);
-    });
-    listV.innerHTML = '';
-    eData.forEach((x, i) => {
-        let d = document.createElement('div'); 
-        d.className = 'item-e';
-        d.innerHTML = '<span>'+x+'</span><button style="width:auto;margin:0;padding:2px 6px;background:#ba3c3c;color:white;border:none;border-radius:4px;cursor:pointer;" onclick="delE('+i+')">✖</button>';
-        listV.appendChild(d);
-    });
-}
+            contenedorListas.innerHTML = '<p style="text-align:center; font-size:12px; color:#8c6239; font-weight:bold;">Sincronizando con Google Sheets... 🔄</p>';
 
-// Captura el formulario y envía los datos a Google Sheets por Internet
-form.addEventListener('submit', function(ev) {
-    ev.preventDefault();
-    
-    const submitBtn = form.querySelector('button[type="submit"]');
-    submitBtn.disabled = true;
-    submitBtn.textContent = "Procesando Registro... ⏳";
-
-    const nuevoParticipante = {
-        n: document.getElementById('n').value.trim(),
-        w: document.getElementById('w').value.trim(),
-        i: document.getElementById('i').value.trim(),
-        c: parseInt(document.getElementById('c').value) || 1,
-        e: sel.value
-    };
-
-    fetch(WEB_APP_URL, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(nuevoParticipante)
-    })
-    .then(() => {
-        alert("¡Registro procesado con éxito! Tu asistencia ha sido guardada en la nube. ✨");
-        form.reset();
-        cargarDatosDesdeGoogle();
-    })
-    .catch(error => {
-        console.error("Error:", error);
-        alert("Hubo un problema con la red, pero el sistema intentó procesar tu asistencia.");
-    })
-    .finally(() => {
-        submitBtn.disabled = false;
-        submitBtn.textContent = "Confirmar Mi Asistencia ✨";
-    });
-});
-
-function renderT() {
-    contenedorListas.innerHTML = '';
-    let sumGlobal = 0;
-
-    if (pData.length === 0) {
-        contenedorListas.innerHTML = '<p style="text-align:center; font-size:12px; color:#a3998e;">No hay asistentes registrados aún.</p>';
-        total.textContent = '0';
-        return;
-    }
-
-    let agrupado = {};
-    eData.forEach(evt => { agrupado[evt] = []; });
-    
-    pData.forEach((asistente, idxOrig) => {
-        let evt = asistente.e || "Sin Ceremonia Especificada";
-        if (!agrupado[evt]) {
-            agrupado[evt] = [];
+            fetch(WEB_APP_URL)
+                .then(response => response.json())
+                .then(data => {
+                    if (Array.isArray(data)) {
+                        pData = data;
+                        renderT();
+                    } else {
+                        alert("Error al formatear la información desde la base de datos.");
+                    }
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                    contenedorListas.innerHTML = '<p style="text-align:center; font-size:12px; color:#ba3c3c;">Error de conexión. Inténtalo de nuevo.</p>';
+                });
         }
-        agrupado[evt].push({ ...asistente, idx: idxOrig });
-    });
 
-    for (let nombreEvento in agrupado) {
-        let asistentesEvento = agrupado[nombreEvento];
-        if (asistentesEvento.length === 0) continue;
+        function login() {
+            let pass = prompt("Ingresa la contraseña de administrador:");
+            if (pass === "2009") {
+                panel.style.display = "block";
+                alert("Acceso concedido. Panel habilitado abajo.");
+                cargarDatosDesdeGoogle();
+            } else {
+                alert("Clave incorrecta.");
+            }
+        }
 
-        let subTotalEvento = asistentesEvento.reduce((acc, curr) => acc + curr.c, 0);
-        sumGlobal += subTotalEvento;
+        function addE() {
+            const inp = document.getElementById('new-e');
+            let v = inp.value.trim();
+            if(v === "") return;
+            eData.push(v);
+            localStorage.setItem('eData', JSON.stringify(eData));
+            inp.value = "";
+            renderE();
+            renderT();
+        }
 
-        let tituloEvento = document.createElement('div');
-        tituloEvento.className = 'titulo-seccion-evento';
-        tituloEvento.textContent = nombreEvento + " (" + subTotalEvento + " almas)";
-        contenedorListas.appendChild(tituloEvento);
+        function delE(idx) {
+            if(confirm("¿Eliminar esta ceremonia del menú?")) {
+                eData.splice(idx, 1);
+                localStorage.setItem('eData', JSON.stringify(eData));
+                renderE();
+                renderT();
+            }
+        }
 
-        let tabla = document.createElement('table');
-        tabla.innerHTML = '<thead><tr><th>Nombre</th><th>Invitado</th><th>Cant.</th><th>Acciones</th></tr></thead><tbody></tbody>';
-        let tbody = tabla.querySelector('tbody');
+        function renderE() {
+            sel.innerHTML = '<option value="">-- Selecciona una Ceremonia --</option>';
+            eData.forEach(x => {
+                let o = document.createElement('option');
+                o.value = x; 
+                o.textContent = x; 
+                sel.appendChild(o);
+            });
+            listV.innerHTML = '';
+            eData.forEach((x, i) => {
+                let d = document.createElement('div'); 
+                d.className = 'item-e';
+                d.innerHTML = '<span>'+x+'</span><button style="width:auto;margin:0;padding:2px 6px;background:#ba3c3c;color:white;border:none;border-radius:4px;cursor:pointer;" onclick="delE('+i+')">✖</button>';
+                listV.appendChild(d);
+            });
+        }
 
-        asistentesEvento.forEach(x => {
-            let r = document.createElement('tr');
-            r.innerHTML = '<td>'+x.n+'</td><td>'+x.i+'</td><td>'+x.c+'</td><td><button class="b-wa" onclick="send('+x.idx+')">📱</button><button class="b-del" onclick="delP('+x.idx+')">🗑️</button></td>';
-            tbody.appendChild(r);
+        // Captura el formulario y envía los datos a Google Sheets por Internet
+        form.addEventListener('submit', function(ev) {
+            ev.preventDefault();
+            
+            const submitBtn = form.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Procesando Registro... ⏳";
+
+            const nuevoParticipante = {
+                n: document.getElementById('n').value.trim(),
+                w: document.getElementById('w').value.trim(),
+                i: document.getElementById('i').value.trim(),
+                c: parseInt(document.getElementById('c').value) || 1,
+                e: sel.value
+            };
+
+            fetch(WEB_APP_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(nuevoParticipante)
+            })
+            .then(() => {
+                alert("¡Registro procesado con éxito! Tu asistencia ha sido guardada en la nube. ✨");
+                form.reset();
+                cargarDatosDesdeGoogle();
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                alert("Hubo un problema con la red, pero el sistema intentó procesar tu asistencia.");
+            })
+            .finally(() => {
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Confirmar Mi Asistencia ✨";
+            });
         });
 
-        contenedorListas.appendChild(tabla);
-    }
+        function renderT() {
+            contenedorListas.innerHTML = '';
+            let sumGlobal = 0;
 
-    total.textContent = sumGlobal;
-}
+            if (pData.length === 0) {
+                contenedorListas.innerHTML = '<p style="text-align:center; font-size:12px; color:#a3998e;">No hay asistentes registrados aún.</p>';
+                total.textContent = '0';
+                return;
+            }
 
-function send(idx) {
-    let p = pData[idx];
-    let txt = encodeURIComponent("¡Hola " + p.n + "! Confirmamos tu registro para la " + p.e + " (" + p.c + " lugar/es). ¡Te esperamos!");
-    window.open("https://wa.me" + p.w + "?text=" + txt, "_blank");
-}
+            let agrupado = {};
+            eData.forEach(evt => { agrupado[evt] = []; });
+            
+            pData.forEach((asistente, idxOrig) => {
+                let evt = asistente.e || "Sin Ceremonia Especificada";
+                if (!agrupado[evt]) {
+                    agrupado[evt] = [];
+                }
+                agrupado[evt].push({ ...asistente, idx: idxOrig });
+            });
 
-function delP(idx) {
-    alert("Aviso: Para eliminar participantes de forma permanente y mantener la base de datos limpia, por favor borra la fila directamente desde tu archivo en Google Sheets.");
-}
+            for (let nombreEvento in agrupado) {
+                let asistentesEvento = agrupado[nombreEvento];
+                if (asistentesEvento.length === 0) continue;
 
-function copiarListaCompleta() {
-    if(pData.length === 0) {
-        alert("No hay asistentes registrados.");
-        return;
-    }
+                let subTotalEvento = asistentesEvento.reduce((acc, curr) => acc + curr.c, 0);
+                sumGlobal += subTotalEvento;
 
-    let agrupado = {};
-    pData.forEach(x => {
-        let evt = x.e || "Otros";
-        if(!agrupado[evt]) {
-            agrupado[evt] = [];
+                let tituloEvento = document.createElement('div');
+                tituloEvento.className = 'titulo-seccion-evento';
+                tituloEvento.textContent = nombreEvento + " (" + subTotalEvento + " almas)";
+                contenedorListas.appendChild(tituloEvento);
+
+                let tabla = document.createElement('table');
+                tabla.innerHTML = '<thead><tr><th>Nombre</th><th>Invitado</th><th>Cant.</th><th>Acciones</th></tr></thead><tbody></tbody>';
+                let tbody = tabla.querySelector('tbody');
+
+                asistentesEvento.forEach(x => {
+                    let r = document.createElement('tr');
+                    r.innerHTML = '<td>'+x.n+'</td><td>'+x.i+'</td><td>'+x.c+'</td><td>' +
+                        '<button class="b-wa" title="Enviar Confirmación y Requisitos" onclick="send('+x.idx+')">📱</button>' +
+                        '<button class="b-wa" title="Enviar Recordatorio" style="background:#8c6239; margin-left:4px;" onclick="enviarRecordatorio('+x.idx+')">⏰</button>' +
+                        '<button class="b-del" title="Eliminar Asistente" style="margin-left:4px;" onclick="delP('+x.idx+')">🗑️</button>' +
+                        '</td>';
+                    tbody.appendChild(r);
+                });
+
+                contenedorListas.appendChild(tabla);
+            }
+
+            total.textContent = sumGlobal;
         }
-        agrupado[evt].push(x);
-    });
 
-    let txt = "*REPORTE DE ASISTENTES - TRIBU JEYAJÉ*\n";
-    txt += "=========================================\n\n";
+        // 1. CONFIRMACIÓN INTEGRADA CON REQUISITOS
+        function send(idx) {
+            let p = pData[idx];
+            let txt = encodeURIComponent("¡Hola " + p.n + "! ✨ Confirmamos con alegría tu registro para la *" + p.e + "* (" + p.c + " lugar/es reservados). Tu registro ya está ingresado en el sistema oficial.\n\n" +
+                "📜 *REQUISITOS Y RECOMENDACIONES:*\n" +
+                "• Asistir con ropa cómoda y abrigada (preferiblemente clara).\n" +
+                "• Traer una mantilla o colchoneta para tu comodidad.\n" +
+                "• Mantener un ayuno ligero o alimentación liviana unas horas antes.\n" +
+                "• Traer una ofrenda de frutas o flores si nace de tu corazón.\n\n" +
+                "Si vienes con tu invitado (" + p.i + "), por favor hazle llegar estas recomendaciones. ¡Te esperamos con el corazón abierto! 🙏");
+            window.open("https://wa.me" + p.w + "?text=" + txt, "_blank");
+        }
 
-    for (let evento in agrupado) {
-        let lista = agrupado[evento];
-        let subTotal = lista.reduce((acc, curr) => acc + curr.c, 0);
-        
-        txt += "🔥 *" + evento.toUpperCase() + "* (" + subTotal + " asistentes):\n";
-        lista.forEach((x, i) => {
-            txt += "  " + (i+1) + ". " + x.n + " (Invitado por: " + x.i + ") - " + x.c + " asist.\n";
-        });
-        txt += "\n";
-    }
+        // 2. RECORDATORIO PREVIO
+        function enviarRecordatorio(idx) {
+            let p = pData[idx];
+            let txt = encodeURIComponent("¡Hola " + p.n + "! ⏰ Este es un recordatorio afectuoso de la Comunidad Jeyajé. Nos encontramos muy pronto para celebrar la *" + p.e + "*.\n\n" +
+                "Recuerda que tienes " + p.c + " espacio(s) confirmado(s). Por favor llega con 15 minutos de anticipación para comenzar en armonía. ¡Muchas bendiciones! 🔥🌈");
+            window.open("https://wa.me" + p.w + "?text=" + txt, "_blank");
+        }
 
-    navigator.clipboard.writeText(txt).then(() => {
-        alert("¡Reporte segmentado copiado! Ya puedes pegarlo de forma limpia en WhatsApp.");
-    });
-}
+        // 3. BOTÓN DE BORRADO DE LA VISTA
+        function delP(idx) {
+            if(confirm("¿Seguro que deseas eliminar este asistente del panel? (Nota: Recuerda borrarlo también de tu Google Sheets para mantener la base de datos limpia de forma permanente)")) {
+                pData.splice(idx, 1);
+                renderT();
+            }
+        }
+
+        function copiarListaCompleta() {
+            if(pData.length === 0) {
+                alert("No hay asistentes registrados.");
+                return;
+            }
+
+            let agrupado = {};
+            pData.forEach(x => {
+                let evt = x.e || "Otros";
+                if(!agrupado[evt]) {
+                    agrupado[evt] = [];
+                }
+                agrupado[evt].push(x);
+            });
+
+            let txt = "*REPORTE DE ASISTENTES - TRIBU JEYAJÉ*\n";
+            txt += "=========================================\n\n";
+
+            for (let evento in agrupado) {
+                let lista = agrupado[evento];
+                let subTotal = lista.reduce((acc, curr) => acc + curr.c, 0);
+                
+                txt += "🔥 *" + evento.toUpperCase() + "* (" + subTotal + " asistentes):\n";
+                lista.forEach((x, i) => {
+                    txt += "  " + (i+1) + ". " + x.n + " (Invitado por: " + x.i + ") - " + x.c + " asist.\n";
+                });
+                txt += "\n";
+            }
+
+            navigator.clipboard.writeText(txt).then(() => {
+                alert("¡Reporte segmentado copiado! Ya puedes pegarlo de forma limpia en WhatsApp.");
+            });
+        }
     </script>
 </body>
 </html>
