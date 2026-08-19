@@ -25,8 +25,6 @@
         .b-del { background: #ba3c3c; color: white; padding: 4px 6px; border: none; border-radius: 4px; cursor: pointer; margin-left: 4px; }
         .item-e { display: flex; justify-content: space-between; align-items: center; background: #faf9f6; padding: 6px; margin-top: 5px; border: 1px solid #e6dfd3; border-radius: 4px; font-size: 13px; }
         .btn-secreto { background: none; border: none; color: #a3998e; font-size: 12px; margin-top: 40px; margin-bottom: 20px; cursor: pointer; text-decoration: underline; }
-        
-        /* Estilo para los títulos de cada sección del listado discriminado */
         .titulo-seccion-evento { font-weight: bold; color: #ba3c3c; font-size: 13px; margin-top: 15px; margin-bottom: 5px; background: #faf9f6; padding: 6px; border-left: 4px solid #ba3c3c; border-radius: 4px; }
     </style>
 </head>
@@ -66,14 +64,17 @@
                 <div id="cnt">Total Participantes Confirmados: <span id="tot">0</span></div>
                 <button type="button" class="btn" style="background:#ba3c3c; margin-bottom:15px;" onclick="copiarListaCompleta()">📋 Copiar Reporte para WhatsApp</button>   
                 
-                <!-- El contenedor donde se inyectarán las tablas separadas de forma dinámica -->
                 <div id="listas-separadas-eventos"></div>
             </section>
         </div>
 
         <button class="btn-secreto" onclick="login()">Acceso Encargado</button>
     </main>
+
     <script>
+        // CONFIGURACIÓN CENTRAL: Coloca aquí tu URL privada de Google Apps Script
+        const WEB_APP_URL = https://script.google.com/macros/s/AKfycbwaXgClfcJGtLBv9WKyp3AU17zbxB8wGjM-R4HNG3n1kNRhVYUfWDUQAj-NlsRI7UilWA/exec;
+
         const form = document.getElementById('form-reg');
         const total = document.getElementById('tot');
         const sel = document.getElementById('e');
@@ -81,17 +82,38 @@
         const panel = document.getElementById('admin');
         const contenedorListas = document.getElementById('listas-separadas-eventos');
 
-        let pData = JSON.parse(localStorage.getItem('pData')) || [];
+        let pData = [];
         let eData = JSON.parse(localStorage.getItem('eData')) || ["Ceremonia de Agradecimiento a la Pachamama - 21-Agosto-2026", "Ceremonia de Equinoccio de Primavera - 21-Septiembre-2026"];
 
         renderE();
-        renderT();
+        // Función para descargar los datos actualizados desde la Hoja de Google
+        function cargarDatosDesdeGoogle() {
+            if (panel.style.display !== "block") return; // Solo descarga si el panel está visible
+
+            contenedorListas.innerHTML = '<p style="text-align:center; font-size:12px; color:#8c6239; font-weight:bold;">Sincronizando con Google Sheets... 🔄</p>';
+
+            fetch(WEB_APP_URL)
+                .then(response => response.json())
+                .then(data => {
+                    if (Array.isArray(data)) {
+                        pData = data;
+                        renderT();
+                    } else {
+                        alert("Error al formatear la información desde la base de datos.");
+                    }
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                    contenedorListas.innerHTML = '<p style="text-align:center; font-size:12px; color:#ba3c3c;">Error de conexión. Inténtalo de nuevo.</p>';
+                });
+        }
 
         function login() {
             let pass = prompt("Ingresa la contraseña de administrador:");
             if (pass === "2009") {
                 panel.style.display = "block";
                 alert("Acceso concedido. Panel habilitado abajo.");
+                cargarDatosDesdeGoogle(); // Descarga la lista en tiempo real inmediatamente
             } else {
                 alert("Clave incorrecta.");
             }
@@ -109,7 +131,7 @@
         }
 
         function delE(idx) {
-            if(confirm("¿Eliminar ésta ceremonia del menú?")) {
+            if(confirm("¿Eliminar esta ceremonia del menú?")) {
                 eData.splice(idx, 1);
                 localStorage.setItem('eData', JSON.stringify(eData));
                 renderE();
@@ -131,19 +153,42 @@
             });
         }
 
+        // EVENTO CENTRAL: Captura el formulario y envía los datos a Google Sheets por Internet
         form.addEventListener('submit', function(ev) {
             ev.preventDefault();
-            pData.push({
-                n: document.getElementById('n').value,
-                w: document.getElementById('w').value,
-                i: document.getElementById('i').value,
-                c: parseInt(document.getElementById('c').value),
+            
+            const submitBtn = form.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Procesando Registro... ⏳";
+
+            const nuevoParticipante = {
+                n: document.getElementById('n').value.trim(),
+                w: document.getElementById('w').value.trim(),
+                i: document.getElementById('i').value.trim(),
+                c: parseInt(document.getElementById('c').value) || 1,
                 e: sel.value
+            };
+
+            // Envía la información a través del puente de Google Apps Script
+            fetch(WEB_APP_URL, {
+                method: "POST",
+                mode: "no-cors", // Evita problemas de políticas de seguridad en navegadores móviles
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(nuevoParticipante)
+            })
+            .then(() => {
+                alert("¡Registro procesado con éxito! Tu asistencia ha sido guardada en la nube. ✨");
+                form.reset();
+                cargarDatosDesdeGoogle(); // Si el administrador está mirando, actualiza la tabla
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                alert("Hubo un problema con la red, pero el sistema intentó procesar tu asistencia.");
+            })
+            .finally(() => {
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Confirmar Mi Asistencia ✨";
             });
-            localStorage.setItem('pData', JSON.stringify(pData));
-            renderT();
-            form.reset();
-            alert("¡Registro procesado con éxito! ✨");
         });
 
         function renderT() {
@@ -156,7 +201,6 @@
                 return;
             }
 
-            // Agrupar la información dinámicamente según la ceremonia elegida
             let agrupado = {};
             eData.forEach(evt => { agrupado[evt] = []; });
             
@@ -168,7 +212,6 @@
                 agrupado[evt].push({ ...asistente, idx: idxOrig });
             });
 
-            // Dibujar las secciones independientes con sus respectivas tablas
             for (let nombreEvento in agrupado) {
                 let asistentesEvento = agrupado[nombreEvento];
                 if (asistentesEvento.length === 0) continue;
@@ -176,13 +219,11 @@
                 let subTotalEvento = asistentesEvento.reduce((acc, curr) => acc + curr.c, 0);
                 sumGlobal += subTotalEvento;
 
-                // Título de la Ceremonia
                 let tituloEvento = document.createElement('div');
                 tituloEvento.className = 'titulo-seccion-evento';
                 tituloEvento.textContent = nombreEvento + " (" + subTotalEvento + " almas)";
                 contenedorListas.appendChild(tituloEvento);
 
-                // Construcción limpia de la tabla usando código seguro
                 let tabla = document.createElement('table');
                 tabla.innerHTML = '<thead><tr><th>Nombre</th><th>Invitado</th><th>Cant.</th><th>Acciones</th></tr></thead><tbody></tbody>';
                 let tbody = tabla.querySelector('tbody');
@@ -206,11 +247,7 @@
         }
 
         function delP(idx) {
-            if(confirm("¿Seguro que deseas eliminar este asistente?")) {
-                pData.splice(idx, 1);
-                localStorage.setItem('pData', JSON.stringify(pData));
-                renderT();
-            }
+            alert("Aviso: Para eliminar participantes de forma permanente y mantener la base de datos limpia, por favor borra la fila directamente desde tu archivo en Google Sheets.");
         }
 
         function copiarListaCompleta() {
